@@ -1,0 +1,47 @@
+TASK TO BE DONE TO COMPLETE THE MAP PROJECT
+
+\*\_\_Error message on the screen/DONE
+
+\*\_\_Escape key removes the form if not needed/DONE(both for edit and new map layout)
+
+\*\_\_Ability to edit a workout;(PRIORITY)
+
+\*\_\_Ability to delete a workout; DONE
+
+\*\_\_Ability to delete all workouts; DONE
+
+\*\_\_Ability to sort workouts by a certain field (e.g. distance);
+
+\*\_\_Re-build Running and Cycling objects coming from Local Storage;// DONE
+
+\*\_\_More realistic error and confirmation messages; DONE
+
+\*\_\_Ability to position the map to show all workouts [very hard];
+
+\*\_\_Ability to draw lines and shapes instead of just points [very hard];
+
+ACTION ITEMS ON MAPTY APP
+1, make research on openstreetmap theme/Google theme map for code (EXPLORING THE APP)
+
+2, A unique identifier should be given to an object created. In the real world, a library is usually used to create good and unique id numbers. MAKE A RESEARCH ON THAT.
+
+3, understand the .closest() method use on the \_moveToPopup method and underStand event Delegation
+
+4, understand why dataset is used on html attributes
+
+5, check out the .setView on the leaflet documentation
+
+6, Understand the concept of working with local storage
+
+7, Delegation: Understand the concept of code delegation on methods and eventHandlers
+
+8, Regularly used Web Development / Browser APIs,
+
+9, UnderStand Location.Reload
+
+POINT TAKEN:
+I noticed that that \_newWorkout() contains few codes in it and some methods which was created outside that gets called in it.(Delegation: Understand the concept of code delegation on methods and eventHandlers) it is a good practice to keep your code clean
+
+The App Constructor is where we have all the codes that is executed right when the apps load
+
+Whenever we convert our OBJECT to a STRING and then BACK from the STRING to OBJECT. The PROTOTYPE CHAIN WILL BE LOST and the new OBJECT that was gotten from the local storage does not contain the PROTOTYPE CHAIN and so the OBJECT are now just regular OBJECTS. They are no longer OBJECTS that are created by the RUNNING / CYCLING CLASS and therefore they will not be able to inherit their class and so workout.clicks will no longer work. This can be a big problem when working with local Storage and OOP.
