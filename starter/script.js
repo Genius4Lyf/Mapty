@@ -166,21 +166,19 @@ class App {
 
   // SET CURRENT DATA FOR EACH WORKOUT WHEN USER CLICK EDIT BUTTON
   _setEditForm(workout) {
-    if (inputTypeForm.value != workout.type) {
-      inputTypeForm.value = workout.type;
-
-      const event = new Event('change', { bubbles: true });
-      inputTypeForm.dispatchEvent(event);
+    inputTypeForm.value = workout.type;
+    if (workout.type === 'running') {
+      inputCadenceForm.parentElement.classList.remove('form__row--hidden');
+      inputElevationForm.parentElement.classList.add('form__row--hidden');
+      inputCadenceForm.value = workout.cadence;
+    } else if (workout.type === 'cycling') {
+      inputCadenceForm.parentElement.classList.add('form__row--hidden');
+      inputElevationForm.parentElement.classList.remove('form__row--hidden');
+      inputElevationForm.value = workout.elevation;
     }
 
     inputDistanceForm.value = workout.distance;
     inputDurationForm.value = workout.duration;
-
-    if (workout.type === 'running') {
-      inputCadenceForm.value = workout.cadence;
-    } else if (workout.type === 'cycling') {
-      inputElevationForm.value = workout.elevation;
-    }
   }
 
   _resetInputForm() {
