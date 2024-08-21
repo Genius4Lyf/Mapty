@@ -842,10 +842,15 @@ class App {
     console.log(errorModal.classList);
   }
 
+  _removeTempMarker() {
+    this.#map.removeLayer(this.#tempMarker);
+    this.#tempMarker = null;
+  }
   _closeForm(event) {
     // console.log(this);
     if (event.key === 'Escape' && !form.classList.contains('hidden')) {
       form.classList.add('hidden');
+      this._removeTempMarker();
     }
 
     if (event.key === 'Escape' && !formEdit.classList.contains('hidden')) {
