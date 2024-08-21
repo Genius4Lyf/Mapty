@@ -507,6 +507,8 @@ class App {
         ...workout,
         type: 'running',
         pace,
+        distance: formData.distance,
+        duration: formData.duration,
         cadence: formData.cadence,
       });
       delete workout.speed;
@@ -516,6 +518,8 @@ class App {
         ...workout,
         type: 'cycling',
         speed,
+        distance: formData.distance,
+        duration: formData.duration,
         elevation: formData.elevation,
       });
       delete workout.pace;
@@ -556,6 +560,7 @@ class App {
     );
     workData = workout;
 
+    console.log(workData);
     // REMOVE THE LIST AND REDRAW IT
     listElement.forEach(li => {
       li.remove();
