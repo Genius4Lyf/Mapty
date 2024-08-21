@@ -14,13 +14,19 @@ class Workout {
   }
 
   // PROTECTED METHOD
-  _setDescription() {
+  static _generateDescription(type, date) {
     // prettier-ignore
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    this.description = `${this.type[0].toUpperCase()}${this.type.slice(1)} on ${
-      months[this.date.getMonth()]
-    } ${this.date.getDate()}`;
+    const desc = `${type[0].toUpperCase()}${type.slice(1)} on ${
+      months[date.getMonth()]
+    } ${date.getDate()}`;
+
+    return desc;
+  }
+
+  _setDescription() {
+    this.description = Workout._generateDescription(this.type, this.date);
   }
 }
 
@@ -84,6 +90,7 @@ const body = document.querySelector('body');
 const overlayForm = document.querySelector('.overlay-form');
 const modalForm = document.querySelector('.modal-form');
 const deleteAllBtn = document.querySelector('.btn-all');
+const titleColume = document.querySelector('.workout__title');
 
 // EDIT FORM SELECTOR
 const formEdit = document.querySelector('.modal-form');
@@ -108,6 +115,7 @@ class App {
   #workouts = [];
   #workoutsMarkers = [];
   #tempMarker = null;
+  #currentEditMarker = null;
   // Defining the click, map, mapZoomLevel, mapEvent and workouts properties/fields to be on the instance scope of the App object
 
   constructor() {
@@ -146,7 +154,7 @@ class App {
     }
 
     // STILL WORKING ON THIS(ACTION ITEM YET TO BE COMPLETED)
-    formEdit.addEventListener('submit', this._newWorkout);
+    // formEdit.addEventListener('submit', this._newWorkout);
 
     deleteAllBtn.addEventListener('click', this._deleteAllWorkout.bind(this));
   }
@@ -156,11 +164,38 @@ class App {
     this.#click++;
   }
 
+  // SET CURRENT DATA FOR EACH WORKOUT WHEN USER CLICK EDIT BUTTON
+  _setEditForm(workout) {
+    if (inputTypeForm.value != workout.type) {
+      inputTypeForm.value = workout.type;
+
+      const event = new Event('change', { bubbles: true });
+      inputTypeForm.dispatchEvent(event);
+    }
+
+    inputDistanceForm.value = workout.distance;
+    inputDurationForm.value = workout.duration;
+
+    if (workout.type === 'running') {
+      inputCadenceForm.value = workout.cadence;
+    } else if (workout.type === 'cycling') {
+      inputElevationForm.value = workout.elevation;
+    }
+  }
+
+  _resetInputForm() {
+    inputTypeForm.value = 'running';
+    inputDistanceForm.value = '';
+    inputDurationForm.value = '';
+    if (inputCadenceForm) inputCadenceForm.value = '';
+    if (inputElevationForm) inputElevationForm.value = '';
+    // inputElevationForm?.value = "";
+  }
+
   _editWorkout(event) {
     event.preventDefault();
     console.log(event.target);
     console.log(event.target.dataset.id);
-
     if (event.target.classList.contains('list--elements')) return;
 
     if (event.target.classList.contains('edit')) {
@@ -180,8 +215,12 @@ class App {
           overlayForm.classList.remove('hidden');
           // NEW DATE WILL BE CREATED AND THE ID WILL BE CHANGED
           // NEW FORM WILL OVERIDE THE EXISTING DATA OF THE OLD FORM
+
+          this._setEditForm(workout);
         }
       });
+
+      this.#currentEditMarker = event.target.dataset.id;
     }
 
     if (event.target.classList.contains('delete')) this._deleteWorkout(event);
@@ -309,8 +348,11 @@ class App {
     this.#mapEvent = mapE;
     form.classList.remove('hidden');
     // inputDistance.focus();
+
     const { lat, lng } = this.#mapEvent.latlng;
     this._setTempMarker(lat, lng);
+
+    // SET DEFAULT TYPE TO RUNNING
   }
 
   _hideForm() {
@@ -336,18 +378,237 @@ class App {
     inputCadenceForm.closest('.form__row').classList.toggle('form__row--hidden');
   }
 
+  _getFormData(isModalForm) {
+    if (isModalForm) {
+      return {
+        type: inputTypeForm.value,
+        distance: +inputDistanceForm.value,
+        duration: +inputDurationForm.value,
+        cadence: +inputCadenceForm?.value,
+        elevation: +inputElevationForm?.value,
+      };
+    } else {
+      return {
+        type: inputType.value,
+        distance: +inputDistance.value,
+        duration: +inputDuration.value,
+        cadence: +inputCadence?.value,
+        elevation: +inputElevation?.value,
+      };
+    }
+  }
+
+  _createWorkout(data, coords, uniqueId) {
+    const workoutTypes = {
+      running: () =>
+        new Running(
+          coords,
+          data.distance,
+          data.duration,
+          data.cadence,
+          uniqueId
+        ),
+      cycling: () =>
+        new Cycling(
+          coords,
+          data.distance,
+          data.duration,
+          data.elevation,
+          uniqueId
+        ),
+    };
+
+    const createFunc = workoutTypes[data.type];
+    return createFunc ? createFunc() : null;
+  }
+
+  _addNewWorkout(formData) {
+    const { lat, lng } = this.#mapEvent.latlng;
+    const uniqueId = crypto.randomUUID();
+    const workout = this._createWorkout(formData, [lat, lng], uniqueId);
+
+    // Add new object to workout array
+    this.#workouts.push(workout);
+    console.log(this.#workouts, 'WORKOUT ARRAY');
+
+    // Remove TempMarker on the map
+    this._removeTempMarker();
+
+    // Render workout on map as marker
+    this._renderWorkoutMarker(workout, uniqueId);
+
+    // Render Workout on list
+    this._renderWorkout(workout);
+
+    // Hide the form + Clear input fields
+    this._hideForm();
+  }
+
+  _updateExistingWorkout(formData) {
+    this._hideModalForm();
+    const workout = this._updateWorkoutData(formData);
+    if (workout) {
+      //UPDATE MARKER POPUP
+      this._updateMarkerPopup(workout);
+
+      // UPDATE SIDEBAR WORKOUT INFORMATION
+      this._updateListItem(workout, formData);
+
+      // RESET INPUT FORM
+      this._resetInputForm();
+    }
+  }
+
+  _updateMarkerPopup(workout) {
+    const work = this.#workouts.find(
+      work => work.id === this.#currentEditMarker
+    );
+    // GET POPUP DESCRIPTION FROM WORKOUT FUNCTION (REUSABLE)
+    const desc = Workout._generateDescription(
+      workout.type,
+      new Date(work?.date)
+    );
+
+    work.description = desc;
+
+    const workMarker = this.#workoutsMarkers.find(
+      marker => marker.options.id === this.#currentEditMarker
+    );
+
+    if (workMarker) {
+      let contentImage = '';
+
+      if (workout.type === 'running') {
+        contentImage = '🏃‍♂️';
+        workMarker._popup._container.classList.add('running-popup');
+        workMarker._popup._container.classList.remove('cycling-popup');
+      } else {
+        contentImage = '🚵';
+        workMarker._popup._container.classList.remove('running-popup');
+        workMarker._popup._container.classList.add('cycling-popup');
+      }
+
+      workMarker._popup.setContent(`${contentImage} ${desc}`);
+    }
+  }
+
+  _updateWorkoutData(formData) {
+    const workout = this.#workouts.find(
+      work => work.id === this.#currentEditMarker
+    );
+    if (!workout) return null;
+
+    const { distance, duration, type } = formData;
+    const pace = duration / distance;
+    const speed = distance / (duration / 60);
+
+    if (type === 'running') {
+      Object.assign(workout, {
+        ...workout,
+        type: 'running',
+        pace,
+        cadence: formData.cadence,
+      });
+      delete workout.speed;
+      delete workout.elevation;
+    } else {
+      Object.assign(workout, {
+        ...workout,
+        type: 'cycling',
+        speed,
+        elevation: formData.elevation,
+      });
+      delete workout.pace;
+      delete workout.cadence;
+    }
+
+    return workout;
+  }
+
+  _updateListItem(workout, formData) {
+    const listItem = this._findListItem(workout.id);
+    if (!listItem) return;
+
+    const elements = this._getListItemElements(listItem);
+    this._updateListItemContent(elements, formData, workout);
+  }
+
+  _findListItem(id) {
+    return [...listElement].find(item => item.dataset.id === id);
+  }
+
+  _getListItemElements(listItem) {
+    return {
+      title: listItem.querySelector('workout__title'),
+      distance: listItem.querySelector('.workout__distance'),
+      duration: listItem.querySelector('.workout__duration'),
+      speed: listItem.querySelector('.workout__speed'),
+      pace: listItem.querySelector('.workout__pace'),
+      cadence: listItem.querySelector('.workout__cadence'),
+      elevation: listItem.querySelector('.workout__elevation'),
+      icon: listItem.querySelector('.workout__icon'),
+    };
+  }
+
+  _updateListItemContent(elements, formData, workout) {
+    let workData = this.#workouts.find(
+      work => work.id === this.#currentEditMarker
+    );
+    workData = workout;
+
+    // REMOVE THE LIST AND REDRAW IT
+    listElement.forEach(li => {
+      li.remove();
+    });
+    this.#workouts.forEach(work => {
+      this._renderWorkout(work);
+    });
+  }
+
+  _hideModalForm() {
+    modalForm.classList.add('hidden');
+    overlayForm.classList.add('hidden');
+  }
+
+  _addListItemEventListeners() {
+    listElement.forEach(li => {
+      li.removeEventListener('click', this._editWorkout);
+      li.addEventListener('click', this._editWorkout.bind(this));
+    });
+  }
+
   _newWorkout(event) {
-    let type;
-    let distance;
-    let duration;
-    console.log(event.target);
     //place as a callback function to form eventListener at the constructor
     const validInputs = (...inputs) =>
       inputs.every(inp => Number.isFinite(inp)); // the every array method checks for all the elements of the array and returns a boolean. If all elements pass, then it returns true, if one fails and the rest passes, it returns false
 
     const allPositive = (...inputs) => inputs.every(inp => inp > 0);
-    // console.log(this);
     event.preventDefault();
+
+    const checkValidation = ({
+      type,
+      distance,
+      duration,
+      cadence,
+      elevation,
+    }) => {
+      const commonInputs = [distance, duration];
+      const specificInput = type === 'running' ? cadence : elevation;
+
+      if (!validInputs(...commonInputs, specificInput)) {
+        return false;
+      }
+
+      if (!allPositive(...commonInputs)) {
+        return false;
+      }
+
+      if (type === 'running' && !allPositive(cadence)) {
+        return false;
+      }
+
+      return true;
+    };
 
     // const formType = formInputType.value;
     // const formDistance = formInputDistance.value;
@@ -371,90 +632,23 @@ class App {
     // console.log(typeForm, distanceForm, durationForm);
 
     // Get Data from form
-    if (event.target.classList.contains('modal-form')) {
-      type = inputTypeForm.value;
-      distance = +inputDistanceForm.value;
-      duration = +inputDurationForm.value;
-      console.log(type, distance, duration, 'EDIT FORM');
+    const isModalForm = event.target.classList.contains('modal-form');
+    const formData = this._getFormData(isModalForm);
+
+    // CHECK VALIDATION
+    if (!checkValidation(formData)) {
+      return this._toggleErrorMessage(formData.type);
+    }
+
+    // CHECK TYPE >>  ADD OR EDIT
+    if (!isModalForm) {
+      this._addNewWorkout(formData);
     } else {
-      type = inputType.value;
-      distance = +inputDistance.value;
-      duration = +inputDuration.value;
-      console.log(type, distance, duration, 'NORMAL FORM');
+      this._updateExistingWorkout(formData);
     }
 
-    const { lat, lng } = this.#mapEvent.latlng;
-    const uniqueId = crypto.randomUUID();
-    let workout;
-
-    textField.focus();
-    // if workout running, create running object
-    if (type === 'running') {
-      // Check if Data is valid
-      const cadence = +inputCadence.value;
-      if (
-        // !Number.isFinite(distance) ||
-        // !Number.isFinite(duration) ||
-        // !Number.isFinite(cadence) // this was done first but in order to make it cleaner, a function validInputs was created to check for all the numbers
-        !validInputs(distance, duration, cadence) ||
-        !allPositive(distance, duration, cadence)
-      )
-        // if validInputs returns true, it will then be inverted to false, then then the 'return alert' code does not run at all, but it validInputs returns false, it will be inverted to true, the the 'retun alert() code runs
-        return this._toggleErrorMessage(type);
-
-      //using a guard claus means, is that we will basically check for the opposite of what we are originally interested in and if that opposite is true, then we simply return the function immediately
-
-      // create running object
-      console.log('uniqueId' + uniqueId);
-      workout = new Running([lat, lng], distance, duration, cadence, uniqueId);
-      console.log(workout, 'RUNNING');
-    }
-
-    // if workout cycling, create cycling object
-    if (type === 'cycling') {
-      // Check if Data is valid
-      const elevation = +inputElevation.value;
-      if (
-        !validInputs(distance, duration, elevation) ||
-        !allPositive(distance, duration)
-      )
-        // if validInputs returns true, it will then be inverted to false, then then the 'return alert' code does not run at all, but it validInputs returns false, it will be inverted to true, the the 'retun alert() code runs
-        return this._toggleErrorMessage(type);
-      //using a guard claus means, is that we will basically check for the opposite of what we are originally interested in and if that opposite is true, then we simply return the function immediately
-
-      // create cycling object
-      workout = new Cycling(
-        [lat, lng],
-        distance,
-        duration,
-        elevation,
-        uniqueId
-      );
-      console.log(workout, 'CYCLING');
-    }
-
-    // Add new object to workout array
-    this.#workouts.push(workout);
-    console.log(this.#workouts, 'WORKOUT ARRAY');
-
-    // Remove TempMarker on the map
-    this._removeTempMarker();
-
-    // Render workout on map as marker
-    this._renderWorkoutMarker(workout, uniqueId);
-
-    // Render Workout on list
-    this._renderWorkout(workout);
-
-    // Hide the form + Clear input fields
-    this._hideForm();
-
-    // set locale storage to all workouts
+    this._addListItemEventListeners();
     this._setLocalStorage();
-
-    listElement.forEach(li => {
-      li.addEventListener('click', this._editWorkout.bind(this));
-    });
   }
 
   _renderWorkoutMarker(workout, uniqueId) {
@@ -505,12 +699,16 @@ class App {
           <span class="workout__icon">${
             workout.type === 'running' ? '🏃‍♂️' : '🚵'
           }</span>
-          <span class="workout__value">${workout.distance}</span>
+          <span class="workout__value workout__distance" >${
+            workout.distance
+          }</span>
           <span class="workout__unit">km</span>
         </div>
         <div class="workout__details">
           <span class="workout__icon">⏱</span>
-          <span class="workout__value">${workout.duration}</span>
+          <span class="workout__value workout__duration">${
+            workout.duration
+          }</span>
           <span class="workout__unit">min</span>
         </div>
       `;
@@ -519,12 +717,16 @@ class App {
       html += `
         <div class="workout__details">
           <span class="workout__icon">⚡️</span>
-          <span class="workout__value">${workout.pace.toFixed(1)}</span>
+          <span class="workout__value workout__pace">${workout.pace.toFixed(
+            1
+          )}</span>
           <span class="workout__unit">min/km</span>
         </div>
         <div class="workout__details">
           <span class="workout__icon">🦶🏼</span>
-          <span class="workout__value">${workout.cadence}</span>
+          <span class="workout__value workout__cadence">${
+            workout.cadence
+          }</span>
           <span class="workout__unit">spm</span>
         </div>
       </li>
@@ -534,12 +736,16 @@ class App {
       html += `
         <div class="workout__details">
           <span class="workout__icon">⚡️</span>
-          <span class="workout__value">${workout.speed.toFixed(1)}</span>
+          <span class="workout__value workout__speed">${workout.speed.toFixed(
+            1
+          )}</span>
           <span class="workout__unit">km/h</span>
         </div>
         <div class="workout__details">
           <span class="workout__icon">⛰</span>
-          <span class="workout__value">${workout.elevation}</span>
+          <span class="workout__value workout__elevation">${
+            workout.elevation
+          }</span>
           <span class="workout__unit">m</span>
         </div>
     `;
@@ -627,8 +833,10 @@ class App {
   }
 
   _toggleErrorMessage() {
-    errorModal.classList.toggle('hidden');
     overlayForm.classList.toggle('hidden');
+    errorModal.classList.toggle('hidden');
+    console.log(overlayForm.classList);
+    console.log(errorModal.classList);
   }
 
   _closeForm(event) {
