@@ -3,11 +3,11 @@
 class Workout {
   // PUBLIC FIELDS
   date = new Date();
-  id = (Date.now() + '').slice(-10); //A unique identifier should be given to an object created. In the real world, a library is usually used to create good and unique id numbers. MAKE A RESEARCH ON THAT.
-  constructor(coords, distance, duration) {
+  // id = (Date.now() + '').slice(-10); //A unique identifier should be given to an object created. In the real world, a library is usually used to create good and unique id numbers. MAKE A RESEARCH ON THAT.
+  constructor(coords, distance, duration, uniqueId) {
     //takes in the data that is common to both workouts(Running & Cycling)
     // this.date = ...
-    // this.id = ...
+    this.id = uniqueId;
     this.coords = coords; //[lat, lng]
     this.distance = distance; // in km
     this.duration = duration; // in min
@@ -28,8 +28,8 @@ class Workout {
 // Creating the CHILD class from the PARENT class WORKOUT
 class Running extends Workout {
   type = 'running';
-  constructor(coords, distance, duration, cadence) {
-    super(coords, distance, duration);
+  constructor(coords, distance, duration, cadence, uniqueId) {
+    super(coords, distance, duration, uniqueId);
     this.cadence = cadence;
     // this.type = 'running' => thesame thing as writing it outside the constructor
     this.calcPace(); //the constructor will call the function
@@ -46,8 +46,8 @@ class Running extends Workout {
 // Creating the CHILD class from the PARENT class WORKOUT
 class Cycling extends Workout {
   type = 'cycling';
-  constructor(coords, distance, duration, elevation) {
-    super(coords, distance, duration);
+  constructor(coords, distance, duration, elevation, uniqueId) {
+    super(coords, distance, duration, uniqueId);
     this.elevation = elevation;
     //this.cycling = 'cycling' => thesame thing as writing it outside the constructor
     this.calcSpeed();
@@ -102,13 +102,20 @@ class App {
   // PRIVATE FIELDS
   #click = 0;
   #map;
+  #initZoomLevel = 3;
   #mapZoomLevel = 13;
   #mapEvent;
   #workouts = [];
+  #workoutsMarkers = [];
+  #tempMarker = null;
   // Defining the click, map, mapZoomLevel, mapEvent and workouts properties/fields to be on the instance scope of the App object
 
   constructor() {
     //the constructor method is called immediately when a new object is created from the class
+
+    // INIT MAP ONCE THE PAGE IS LOADED SO IT WON'T BE EMPTY EVEN IF USERS DENY TO GET CURRENT POSITION (just for better user experience)
+    this._initMap();
+
     // GET USER'S POSITION
     this._getPosition();
 
@@ -180,8 +187,9 @@ class App {
     if (event.target.classList.contains('delete')) this._deleteWorkout(event);
   }
 
+  // DELETE SINGLE WORKOUT
   _deleteWorkout(event) {
-    console.log(this.#workouts);
+    const id = event.target.dataset.id;
     // DELETING FUNCTIONALITY
     // SEARCH FOR THE LIST ITEM TO DELETE, RETURN A NEW ARRAY OF THE FILTERED ARRAY
     if (event.target.classList.contains('delete')) {
@@ -189,15 +197,29 @@ class App {
         work => work.id !== event.target.dataset.id
       );
       this.#workouts = deleteArray;
+
+      // REMOVE LIST ELEMENT
       listElement.forEach(li => {
         if (li.classList.contains(`${event.target.dataset.id}--delete`)) {
           li.remove();
           this._setLocalStorage();
         }
       });
-      // event.target.remove(`btn--${event.target.dataset.id}--edit`);
+      event.target.remove(`btn--${event.target.dataset.id}--edit`);
+
+      // REMOVE INDIVIDUAL MARKERS
+      const workoutMarker = this.#workoutsMarkers.find(
+        marker => marker.options.id === id
+      );
+      if (workoutMarker) {
+        this.#map.removeLayer(workoutMarker);
+
+        this.#workoutsMarkers = this.#workoutsMarkers.filter(
+          marker => marker.options.id !== id
+        );
+      }
     }
-    location.reload();
+    // location.reload();
   }
 
   _deleteAllWorkout(event) {
@@ -220,31 +242,27 @@ class App {
     //inside of the class, we have a method that automatically gets called as the page loads and that is putting the _getPosition method on the constructor
     if (navigator.geolocation)
       navigator.geolocation.getCurrentPosition(
-        this._loadMap.bind(this),
+        this._setMapView.bind(this),
         function () {
-          //this._loadMap callBack function gets called when the location getting is not gotten
+          //this._setMapView callBack function gets called when the location getting is not gotten
           alert('Could not get your position');
         }
       ); //this function here take as an input, two callback function, and the first one is a callback function that will be called on success i.e whenever the browser successfully get the cordinates of the current position of the user and the second call back is the arrow callback when there happen to be an error while getting the cordinates
   }
 
-  _loadMap(position) {
-    const { latitude } = position.coords;
-    const { longitude } = position.coords;
-
-    const coords = [latitude, longitude];
-
-    this.#map = L.map('map').setView(coords, this.#mapZoomLevel); //the string 'map' will be the id set on the index.html where you want the map to be displayed
-    //why are we storing the map in a variable called 'this.#map'?
-    //it is onto the map object that we can add an eventListener. The map is a special object with a couple of methods/properties on it
-    // console.log(map)
-    // https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png
-
+  _initMap() {
+    this.#map = L.map('map').setView([0, 0], this.#initZoomLevel);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       //make research on openstreetmap theme/Google theme map for code (EXPLORING THE APP)
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(this.#map);
+
+    // this.#map = L.map('map').setView(coords, this.#mapZoomLevel); //the string 'map' will be the id set on the index.html where you want the map to be displayed
+    //why are we storing the map in a variable called 'this.#map'?
+    //it is onto the map object that we can add an eventListener. The map is a special object with a couple of methods/properties on it
+    // console.log(map)
+    // https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png
 
     //HANDLING CLICKS ON MAP
     this.#map.on('click', this._showForm.bind(this)); // the this keyword for the _showForm method will be set unto the object at which the function is called unless we set the this keyword by using the bind method so it points the #mapEvent. The 'this' keyword is the app object and so then, the (this).#mapEvent will also be the map object and that is where we have the #mapEvent property
@@ -256,11 +274,43 @@ class App {
     });
   }
 
+  _setMapView(position) {
+    const { latitude } = position.coords;
+    const { longitude } = position.coords;
+
+    const coords = [latitude, longitude];
+
+    this.#map.setView(coords, this.#mapZoomLevel);
+  }
+
+  _setTempMarker(lat, lng) {
+    if (this.#tempMarker === null) {
+      const iconStyle = L.icon({
+        iconUrl: './mapicon.png',
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+      });
+      this.#tempMarker = L.marker([lat, lng], { icon: iconStyle }).addTo(
+        this.#map
+      );
+    } else {
+      this.#tempMarker.setLatLng([lat, lng]);
+    }
+  }
+
+  _removeTempMarker() {
+    this.#map.removeLayer(this.#tempMarker);
+
+    this.#tempMarker = null;
+  }
+
   _showForm(mapE) {
-    //placed on the _loadMap method
+    //placed on the _setMapView method
     this.#mapEvent = mapE;
     form.classList.remove('hidden');
     // inputDistance.focus();
+    const { lat, lng } = this.#mapEvent.latlng;
+    this._setTempMarker(lat, lng);
   }
 
   _hideForm() {
@@ -334,6 +384,7 @@ class App {
     }
 
     const { lat, lng } = this.#mapEvent.latlng;
+    const uniqueId = crypto.randomUUID();
     let workout;
 
     textField.focus();
@@ -354,7 +405,8 @@ class App {
       //using a guard claus means, is that we will basically check for the opposite of what we are originally interested in and if that opposite is true, then we simply return the function immediately
 
       // create running object
-      workout = new Running([lat, lng], distance, duration, cadence);
+      console.log('uniqueId' + uniqueId);
+      workout = new Running([lat, lng], distance, duration, cadence, uniqueId);
       console.log(workout, 'RUNNING');
     }
 
@@ -371,7 +423,13 @@ class App {
       //using a guard claus means, is that we will basically check for the opposite of what we are originally interested in and if that opposite is true, then we simply return the function immediately
 
       // create cycling object
-      workout = new Cycling([lat, lng], distance, duration, elevation);
+      workout = new Cycling(
+        [lat, lng],
+        distance,
+        duration,
+        elevation,
+        uniqueId
+      );
       console.log(workout, 'CYCLING');
     }
 
@@ -379,8 +437,11 @@ class App {
     this.#workouts.push(workout);
     console.log(this.#workouts, 'WORKOUT ARRAY');
 
+    // Remove TempMarker on the map
+    this._removeTempMarker();
+
     // Render workout on map as marker
-    this._renderWorkoutMarker(workout);
+    this._renderWorkoutMarker(workout, uniqueId);
 
     // Render Workout on list
     this._renderWorkout(workout);
@@ -396,8 +457,9 @@ class App {
     });
   }
 
-  _renderWorkoutMarker(workout) {
-    L.marker(workout.coords, {
+  _renderWorkoutMarker(workout, uniqueId) {
+    const marker = L.marker(workout.coords, {
+      id: uniqueId,
       keyboard: true,
       riseOnHover: true,
       draggable: true,
@@ -417,6 +479,8 @@ class App {
         `${workout.type === 'running' ? '🏃‍♂️' : '🚵'} ${workout.description}`
       )
       .openPopup();
+
+    this.#workoutsMarkers.push(marker);
   }
 
   _renderWorkout(workout) {
@@ -556,6 +620,7 @@ class App {
     // Rendering the workout in the list
     this.#workouts.forEach(work => {
       this._renderWorkout(work);
+      this._renderWorkoutMarker(work, work.id);
       // this._renderWorkoutMarker(work); // Why would this not work? Remember that the _getLocalStorage is executed right at the begining, right after the page loaded, and so the _renderWorkoutMarker(work) is trying to be called right at the beginning, however at this point, map has actually not be loadede and essentially we are trying to add a marker to the map which is not yet defined
     });
     console.log('PAGE LOADED SUCCESSFULLY USING the _getLocaleStorage method');
