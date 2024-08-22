@@ -693,14 +693,14 @@ class App {
       this._addNewWorkout(formData);
       this._updateStatus();
     } else {
-      // const title = 'Are you sure to edit data?';
-      // const cb = () => {
-      //   this._updateExistingWorkout(formData);
-      //   this._updateStatus();
-      // };
-      // this._confirmEdit(title, cb);
-      this._updateExistingWorkout(formData);
-      this._updateStatus();
+      const title = 'Are you sure to edit data?';
+      const cb = () => {
+        this._updateExistingWorkout(formData);
+        this._updateStatus();
+      };
+      this._confirmEdit(title, cb);
+      // this._updateExistingWorkout(formData);
+      // this._updateStatus();
     }
   }
 
