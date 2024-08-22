@@ -109,8 +109,13 @@ class App {
   // PRIVATE FIELDS
   #click = 0;
   #map;
+  #minZoomLevel = 3;
   #initZoomLevel = 3;
   #mapZoomLevel = 13;
+  #bounds = {
+    southWest: L.latLng(-90, -180),
+    northEast: L.latLng(90, 180),
+  };
   #mapEvent;
   #workouts = [];
   #workoutsMarkers = [];
@@ -156,7 +161,11 @@ class App {
     // STILL WORKING ON THIS(ACTION ITEM YET TO BE COMPLETED)
     // formEdit.addEventListener('submit', this._newWorkout);
 
-    deleteAllBtn.addEventListener('click', this._deleteAllWorkout.bind(this));
+    deleteAllBtn.addEventListener('click', event => {
+      const title = 'Are you sure to delete all data?';
+      const cb = () => this._deleteAllWorkout(event).bind(this);
+      this._confirmEdit(title, cb);
+    });
   }
 
   ////////////////// PROTECTED METHODS ////////////////////
@@ -213,7 +222,6 @@ class App {
           overlayForm.classList.remove('hidden');
           // NEW DATE WILL BE CREATED AND THE ID WILL BE CHANGED
           // NEW FORM WILL OVERIDE THE EXISTING DATA OF THE OLD FORM
-
           this._setEditForm(workout);
         }
       });
@@ -221,7 +229,27 @@ class App {
       this.#currentEditMarker = event.target.dataset.id;
     }
 
-    if (event.target.classList.contains('delete')) this._deleteWorkout(event);
+    if (event.target.classList.contains('delete')) {
+      const cb = () => this._deleteWorkout(event);
+      const title = 'Are you sure to delete?';
+      this._confirmEdit(title, cb);
+    }
+  }
+
+  _confirmEdit(title, cb) {
+    Swal.fire({
+      title: title,
+      showDenyButton: true,
+      showCancelButton: false,
+      confirmButtonText: 'OK',
+      denyButtonText: 'Cancel',
+      allowOutsideClick: false,
+    }).then(result => {
+      if (result.isConfirmed) {
+        console.log(cb);
+        cb();
+      }
+    });
   }
 
   // DELETE SINGLE WORKOUT
@@ -282,13 +310,28 @@ class App {
         this._setMapView.bind(this),
         function () {
           //this._setMapView callBack function gets called when the location getting is not gotten
-          alert('Could not get your position');
+          // alert('Could not get your position');
+          Swal.fire({
+            position: 'top-end',
+            icon: 'warning',
+            title: 'Could not get your position',
+            showConfirmButton: true,
+            // timer: 1500
+          });
         }
       ); //this function here take as an input, two callback function, and the first one is a callback function that will be called on success i.e whenever the browser successfully get the cordinates of the current position of the user and the second call back is the arrow callback when there happen to be an error while getting the cordinates
   }
 
   _initMap() {
-    this.#map = L.map('map').setView([0, 0], this.#initZoomLevel);
+    const bounds = L.latLngBounds(
+      this.#bounds.southWest,
+      this.#bounds.northEast
+    );
+    // PREVENT USER TO DRAG OUTSIDE THE MAP
+    this.#map = L.map('map', {
+      maxBounds: bounds,
+      minZoom: this.#minZoomLevel,
+    }).setView([0, 0], this.#initZoomLevel);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       //make research on openstreetmap theme/Google theme map for code (EXPLORING THE APP)
       attribution:
@@ -365,15 +408,17 @@ class App {
     // placed as a callback function to the inputType eventListener at constructor
     console.log(event.target);
     // prettier-ignore
-    if (event.target.classList.contains('form__input--type'))
-    inputElevation.closest('.form__row').classList.toggle('form__row--hidden');
-    inputCadence.closest('.form__row').classList.toggle('form__row--hidden');
+    if (event.target.classList.contains('form__input--type')){
+      inputElevation.closest('.form__row').classList.toggle('form__row--hidden');
+      inputCadence.closest('.form__row').classList.toggle('form__row--hidden');
+    }
 
     // prettier-ignore
-    if(event.target.classList.contains('form__input--type-edit'))
-    inputElevationForm.closest('.form__row').classList.toggle('form__row--hidden');
-    // prettier-ignore
-    inputCadenceForm.closest('.form__row').classList.toggle('form__row--hidden');
+    if(event.target.classList.contains('form__input--type-edit')){
+      inputElevationForm.closest('.form__row').classList.toggle('form__row--hidden');
+      // prettier-ignore
+      inputCadenceForm.closest('.form__row').classList.toggle('form__row--hidden');
+    }
   }
 
   _getFormData(isModalForm) {
@@ -646,10 +691,20 @@ class App {
     // CHECK TYPE >>  ADD OR EDIT
     if (!isModalForm) {
       this._addNewWorkout(formData);
+      this._updateStatus();
     } else {
+      // const title = 'Are you sure to edit data?';
+      // const cb = () => {
+      //   this._updateExistingWorkout(formData);
+      //   this._updateStatus();
+      // };
+      // this._confirmEdit(title, cb);
       this._updateExistingWorkout(formData);
+      this._updateStatus();
     }
+  }
 
+  _updateStatus() {
     this._addListItemEventListeners();
     this._setLocalStorage();
   }

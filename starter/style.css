@@ -29,9 +29,9 @@ body {
   overscroll-behavior-y: none;
 
   background-color: #fff;
-  padding: 2.5rem;
+  /* padding: 2.5rem; */
 
-  display: flex;
+  /* display: flex; */
 }
 
 /* GENERAL */
@@ -42,11 +42,16 @@ a:visited {
 
 /* SIDEBAR */
 .sidebar {
-  flex-basis: 50rem;
+  /* flex-basis: 50rem; */
+  width: 50rem;
   background-color: var(--color-dark--1);
   padding: 3rem 5rem 4rem 5rem;
-  display: flex;
-  flex-direction: column;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  /* display: flex; */
+  /* flex-direction: column; */
 }
 
 .logo {
@@ -196,9 +201,13 @@ a:visited {
 
 /* MAP */
 #map {
-  flex: 1;
+  /* flex: 1; */
   height: 100%;
+  width: calc(100% - 50rem);
   background-color: var(--color-light--1);
+  position: absolute !important;
+  top: 0;
+  right: 0;
 }
 
 /* Popup width is defined in JS using options */
@@ -432,4 +441,8 @@ a:visited {
 .trigger-btn {
   display: inline-block;
   margin: 100px auto;
+}
+
+.swal2-actions button {
+  font-size: 1.5rem;
 }

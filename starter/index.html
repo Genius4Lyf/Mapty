@@ -28,11 +28,15 @@
       crossorigin=""
     ></script>
 
+    <!-- SWEET ALERT SCRIPT -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <!-- MY JAVASCRIPT SCRIPT -->
     <script defer src="script.js"></script>
     <title>mapty // Map your workouts</title>
   </head>
   <body>
+    <div id="map"></div>
     <div class="sidebar">
       <img src="logo.png" alt="Logo" class="logo" />
 
@@ -164,8 +168,6 @@
       <button class="btn--close-modal">&times;</button>
       <p class="modal__header">Invalid numbers input:😢</p>
     </div>
-
-    <div id="map"></div>
 
     <div class="overlay-form hidden"></div>
     <!-- EDITING FORM MODAL -->
