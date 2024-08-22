@@ -143,7 +143,7 @@ class App {
 
     inputTypeForm.addEventListener('change', this._toggleElevationField);
 
-    containerWorkouts.addEvFentListener('click', this._moveToPopup.bind(this)); // the event listener will be added as the page loads
+    containerWorkouts.addEventListener('click', this._moveToPopup.bind(this)); // the event listener will be added as the page loads
 
     btnCloseModal.addEventListener(
       'click',
