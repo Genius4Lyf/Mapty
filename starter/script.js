@@ -699,8 +699,6 @@ class App {
         this._updateStatus();
       };
       this._confirmEdit(title, cb);
-      // this._updateExistingWorkout(formData);
-      // this._updateStatus();
     }
   }
 
