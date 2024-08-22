@@ -42,16 +42,17 @@ a:visited {
 
 /* SIDEBAR */
 .sidebar {
-  /* flex-basis: 50rem; */
+  flex-basis: 50rem;
   width: 50rem;
+  height: 100%;
   background-color: var(--color-dark--1);
   padding: 3rem 5rem 4rem 5rem;
   position: absolute;
   top: 0;
   left: 0;
   z-index: 10;
-  /* display: flex; */
-  /* flex-direction: column; */
+  display: flex;
+  flex-direction: column;
 }
 
 .logo {
@@ -317,7 +318,7 @@ a:visited {
   background: none;
   border: 1px solid lighten(gray, 24%);
   height: 48px;
-  padding: 0 24px 0 16px;
+  padding: 0 50% 0 50%;
   letter-spacing: 0.25px;
   border-radius: 24px;
   cursor: pointer;
@@ -333,22 +334,10 @@ a:visited {
 
 .btn-delete {
   font-size: 16px;
-  color: red;
-
-  > .mdi-delete-empty {
-    display: none;
-  }
+  color: green;
 
   &:hover {
     background-color: lighten(red, 48%);
-
-    > .mdi-delete-empty {
-      display: block;
-    }
-
-    > .mdi-delete {
-      display: none;
-    }
   }
 
   &:focus {
